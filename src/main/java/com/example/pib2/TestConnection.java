@@ -3,7 +3,8 @@ package com.example.pib2;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "test_connection")
+@Table(name = "test_connection_x2")
+
 public class TestConnection {
 
     @Id
