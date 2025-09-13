@@ -14,9 +14,9 @@ La documentación interactiva de endpoints está disponible mediante **Swagger U
 ---
 
 ## 🚀 Tecnologías
-- **Java 17+**  
-- **Spring Boot 3.x**  
-- **Maven** como gestor de dependencias  
+- **Java 21**  
+- **Spring Boot 3.5.4**  
+- **Maven 3.11.0** como gestor de dependencias  
 - **Spring Data JPA** para persistencia  
 - **PostgreSQL** alojado en [Supabase](https://supabase.com/)  
 - **Springdoc OpenAPI / Swagger** para documentación  
@@ -27,8 +27,8 @@ La documentación interactiva de endpoints está disponible mediante **Swagger U
 
 ### 1️⃣ Clonar el repositorio
 ```bash
-git clone https://github.com/<usuario>/<nombre-repositorio>.git
-cd <nombre-repositorio>
+git clone https://github.com/josesincreed/pi_backend2.git
+cd <pi_backend2>
 ```
 
 ### 2️⃣ Variables de entorno / Base de datos
