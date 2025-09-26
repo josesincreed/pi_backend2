@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -19,30 +18,35 @@ public class CategoryController {
     // Crear categoría
     @PostMapping
     public ResponseEntity<CategoryDto> create(@RequestBody CategoryDto dto) {
-        return ResponseEntity.ok(categoryService.create(dto));
+        CategoryDto created = categoryService.create(dto);
+        return ResponseEntity.ok(created);
     }
 
     // Obtener todas las categorías
     @GetMapping
     public ResponseEntity<List<CategoryDto>> getAll() {
-        return ResponseEntity.ok(categoryService.getAll());
+        List<CategoryDto> categories = categoryService.getAll();
+        return ResponseEntity.ok(categories);
     }
 
     // Obtener categoría por id
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<CategoryDto>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getById(id));
+    public ResponseEntity<CategoryDto> getById(@PathVariable Long id) {
+        CategoryDto category = categoryService.getById(id);
+        return ResponseEntity.ok(category);
     }
 
     // Actualizar categoría
     @PutMapping("/{id}")
-    public ResponseEntity<Optional<CategoryDto>> update(@PathVariable Long id, @RequestBody CategoryDto dto) {
-        return ResponseEntity.ok(categoryService.update(id, dto));
+    public ResponseEntity<CategoryDto> update(@PathVariable Long id, @RequestBody CategoryDto dto) {
+        CategoryDto updated = categoryService.update(id, dto);
+        return ResponseEntity.ok(updated);
     }
 
     // Eliminar categoría
     @DeleteMapping("/{id}")
-    public ResponseEntity<Boolean> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.delete(id));
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        categoryService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

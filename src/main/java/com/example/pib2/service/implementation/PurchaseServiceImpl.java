@@ -1,10 +1,12 @@
 package com.example.pib2.service.implementation;
 
+import com.example.pib2.exception.CustomException;
+import com.example.pib2.helpers.TechnicalErrorMessage;
 import com.example.pib2.model.purchase.dto.PurchaseDto;
+import com.example.pib2.model.purchaseItem.PurchaseItem;
 import com.example.pib2.model.purchaseItem.mappers.PurchaseItemMapper;
 import com.example.pib2.model.purchase.mappers.PurchaseMapper;
 import com.example.pib2.model.purchase.Purchase;
-import com.example.pib2.model.purchaseItem.PurchaseItem;
 import com.example.pib2.repository.PurchaseRepository;
 import com.example.pib2.repository.ProductRepository;
 import com.example.pib2.repository.PurchaseItemRepository;
@@ -14,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,7 +39,10 @@ public class PurchaseServiceImpl implements PurchaseService {
         // Guardamos los ítems
         List<PurchaseItem> items = dto.getItems().stream().map(itemDto -> {
             if (!productRepository.existsById(itemDto.getProductId())) {
-                throw new RuntimeException("El producto con ID " + itemDto.getProductId() + " no existe");
+                throw new CustomException(
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(itemDto.getProductId())
+                );
             }
             PurchaseItem item = purchaseItemMapper.toEntity(itemDto);
             item.setPurchase(savedPurchase);
@@ -61,24 +65,36 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     @Override
     public List<PurchaseDto> getByUserId(Long userId) {
-        return purchaseRepository.findByUserId(userId)
-                .stream()
+        List<Purchase> purchases = purchaseRepository.findByUserId(userId);
+        if (purchases.isEmpty()) {
+            throw new CustomException(
+                    TechnicalErrorMessage.ORDER_NOT_FOUND.getCode(),
+                    TechnicalErrorMessage.ORDER_NOT_FOUND.getMessage(userId)
+            );
+        }
+        return purchases.stream()
                 .map(purchaseMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Optional<PurchaseDto> getById(Long id) {
+    public PurchaseDto getById(Long id) {
         return purchaseRepository.findById(id)
-                .map(purchaseMapper::toDto);
+                .map(purchaseMapper::toDto)
+                .orElseThrow(() -> new CustomException(
+                        TechnicalErrorMessage.ORDER_NOT_FOUND.getCode(),
+                        TechnicalErrorMessage.ORDER_NOT_FOUND.getMessage(id)
+                ));
     }
 
     @Override
-    public boolean delete(Long id) {
-        if (purchaseRepository.existsById(id)) {
-            purchaseRepository.deleteById(id);
-            return true;
+    public void delete(Long id) {
+        if (!purchaseRepository.existsById(id)) {
+            throw new CustomException(
+                    TechnicalErrorMessage.ORDER_NOT_FOUND.getCode(),
+                    TechnicalErrorMessage.ORDER_NOT_FOUND.getMessage(id)
+            );
         }
-        return false;
+        purchaseRepository.deleteById(id);
     }
 }

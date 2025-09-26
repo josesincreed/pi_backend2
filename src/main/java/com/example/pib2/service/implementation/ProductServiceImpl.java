@@ -1,5 +1,7 @@
 package com.example.pib2.service.implementation;
 
+import com.example.pib2.exception.CustomException;
+import com.example.pib2.helpers.TechnicalErrorMessage;
 import com.example.pib2.model.product.dto.ProductDto;
 import com.example.pib2.model.product.mappers.ProductMapper;
 import com.example.pib2.model.product.Product;
@@ -10,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,9 +24,11 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDto create(ProductDto dto) {
-        // Validar que la categoría exista
         if (!categoryRepository.existsById(dto.getCategoryId())) {
-            throw new RuntimeException("La categoría con ID " + dto.getCategoryId() + " no existe");
+            throw new CustomException(
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getCode(),
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getMessage(dto.getCategoryId())
+            );
         }
 
         Product product = productMapper.toEntity(dto);
@@ -42,13 +45,24 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Optional<ProductDto> getById(Long id) {
-        return productRepository.findById(id)
-                .map(productMapper::toDto);
+    public ProductDto getById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new CustomException(
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(id)
+                ));
+        return productMapper.toDto(product);
     }
 
     @Override
     public List<ProductDto> getByCategory(Long categoryId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new CustomException(
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getCode(),
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getMessage(categoryId)
+            );
+        }
+
         return productRepository.findByCategoryId(categoryId)
                 .stream()
                 .map(productMapper::toDto)
@@ -56,31 +70,39 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Optional<ProductDto> update(Long id, ProductDto dto) {
-        return productRepository.findById(id)
-                .map(existing -> {
-                    existing.setName(dto.getName());
-                    existing.setDescription(dto.getDescription());
-                    existing.setPrice(dto.getPrice());
-                    existing.setStockQuantity(dto.getStockQuantity());
-                    existing.setImageUrl(dto.getImageUrl());
+    public ProductDto update(Long id, ProductDto dto) {
+        Product existing = productRepository.findById(id)
+                .orElseThrow(() -> new CustomException(
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(id)
+                ));
 
-                    // Validar categoría
-                    if (!categoryRepository.existsById(dto.getCategoryId())) {
-                        throw new RuntimeException("La categoría con ID " + dto.getCategoryId() + " no existe");
-                    }
-                    existing.setCategory(productMapper.map(dto.getCategoryId()));
+        existing.setName(dto.getName());
+        existing.setDescription(dto.getDescription());
+        existing.setPrice(dto.getPrice());
+        existing.setStockQuantity(dto.getStockQuantity());
+        existing.setImageUrl(dto.getImageUrl());
 
-                    return productMapper.toDto(productRepository.save(existing));
-                });
+        if (!categoryRepository.existsById(dto.getCategoryId())) {
+            throw new CustomException(
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getCode(),
+                    TechnicalErrorMessage.PRODUCT_CATEGORY_INVALID.getMessage(dto.getCategoryId())
+            );
+        }
+
+        existing.setCategory(productMapper.map(dto.getCategoryId()));
+
+        return productMapper.toDto(productRepository.save(existing));
     }
 
     @Override
-    public boolean delete(Long id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
-            return true;
+    public void delete(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new CustomException(
+                    TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                    TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(id)
+            );
         }
-        return false;
+        productRepository.deleteById(id);
     }
 }
