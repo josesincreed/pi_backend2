@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
-@Tag(name = "Usuarios", description = "API para gestión de usuarios del sistema")
+@Tag(name = "Usuarios", description = "Operaciones para gestión de usuarios del sistema")
 @SecurityRequirement(name = "basicAuth")
 public class UserController {
 

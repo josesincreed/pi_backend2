@@ -27,15 +27,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Deshabilitar CSRF para APIs REST
+                // ❌ Deshabilitar CSRF (para APIs REST)
                 .csrf(csrf -> csrf.disable())
 
+                // 🔑 Autorización de endpoints
                 .authorizeHttpRequests(authz -> authz
-                        // Endpoints públicos (sin autenticación)
+                        // Endpoints públicos
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                                "/swagger-resources/**", "/webjars/**").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
 
                         // ---------- CATEGORY ----------
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
@@ -43,17 +49,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
 
-
                         // ---------- PRODUCT ----------
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
 
-
                         // ---------- PURCHASE ----------
-                        .requestMatchers("/api/purchases/**").hasAnyRole("ADMIN", "USER") // compras accesibles a usuarios registrados
                         .requestMatchers("/api/purchases/user/**").hasRole("USER") // un usuario solo ve sus compras
+                        .requestMatchers("/api/purchases/**").hasAnyRole("ADMIN", "USER")
 
                         // ---------- PURCHASE ITEM ----------
                         .requestMatchers("/api/purchase-items/**").hasAnyRole("ADMIN", "USER")
@@ -61,14 +65,14 @@ public class SecurityConfig {
                         // ---------- USERS ----------
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
 
-                        // Cualquier otro request requiere autenticación
+                        // Cualquier otro request requiere login
                         .anyRequest().authenticated()
                 )
 
-                // Autenticación HTTP Basic
+                // ⚡ Autenticación HTTP Basic (Swagger mostrará el botón Authorize)
                 .httpBasic(basic -> basic.realmName("PI Backend API"))
 
-                // Stateless (ideal para REST APIs)
+                // 🔄 Stateless (sin sesiones, típico en APIs REST)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -79,16 +83,19 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // 🔐 Codificación de contraseñas con BCrypt
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // 🔑 AuthenticationManager para delegar la autenticación
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
+    // 📌 Autenticación basada en UserDetailsService + BCrypt
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
