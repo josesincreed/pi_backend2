@@ -47,7 +47,7 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- ✅ Springdoc compatible con Spring Boot 3.x -->
+        <!-- Springdoc compatible con Spring Boot 3.x -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
