@@ -41,16 +41,29 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/actuator/**", "/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                        // Categorías
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/categories").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+
+                        // Productos
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                        // Detalles de productos
+                        .requestMatchers(HttpMethod.GET, "/api/product-details/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/product-details").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/product-details/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/product-details/**").hasRole("ADMIN")
+
+                        // Cualquier otra solicitud requiere autenticación
                         .anyRequest().authenticated()
                 )
+
 
                 // 🔄 Modo sin sesiones (stateless)
                 .sessionManagement(session -> session
