@@ -16,5 +16,6 @@ public class PurchaseDto {
     private Long userId;
     private LocalDateTime purchaseDate;
     private Double totalAmount;
+    private String city;
     private List<PurchaseItemDto> items; // Relación con los ítems
 }

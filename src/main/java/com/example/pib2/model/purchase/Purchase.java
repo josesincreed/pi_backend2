@@ -30,6 +30,9 @@ public class Purchase {
     @Column(nullable = false)
     private Double totalAmount;
 
+    @Column(nullable = false)
+    private String city;
+
     // Relación con PurchaseItem (una compra puede tener varios ítems)
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseItem> items;
