@@ -3,7 +3,6 @@ package com.example.pib2.model.category;
 import com.example.pib2.model.product.Product;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.util.List;
 
 @Entity
@@ -24,6 +23,9 @@ public class Category {
 
     @Column(length = 255)
     private String description;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 
     // Relación con Product (1 categoría puede tener muchos productos)
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
