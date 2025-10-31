@@ -2,6 +2,7 @@ package com.example.pib2.service.implementation;
 
 import com.example.pib2.exception.CustomException;
 import com.example.pib2.helpers.TechnicalErrorMessage;
+import com.example.pib2.model.product.Product;
 import com.example.pib2.model.purchaseItem.dto.PurchaseItemDto;
 import com.example.pib2.model.purchaseItem.mappers.PurchaseItemMapper;
 import com.example.pib2.model.purchaseItem.PurchaseItem;
@@ -9,6 +10,7 @@ import com.example.pib2.repository.PurchaseItemRepository;
 import com.example.pib2.repository.ProductRepository;
 import com.example.pib2.repository.PurchaseRepository;
 import com.example.pib2.service.PurchaseItemService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,21 +28,35 @@ public class PurchaseItemServiceImpl implements PurchaseItemService {
 
     @Override
     public PurchaseItemDto create(PurchaseItemDto dto) {
-        if (!purchaseRepository.existsById(dto.getPurchaseId())) {
+        // Validar existencia de la compra
+        if (dto.getPurchaseId() == null || !purchaseRepository.existsById(dto.getPurchaseId())) {
             throw new CustomException(
                     TechnicalErrorMessage.ORDER_NOT_FOUND.getCode(),
                     TechnicalErrorMessage.ORDER_NOT_FOUND.getMessage(dto.getPurchaseId())
             );
         }
-        if (!productRepository.existsById(dto.getProductId())) {
+
+        // Validar existencia del producto
+        if (dto.getProductId() == null || !productRepository.existsById(dto.getProductId())) {
             throw new CustomException(
                     TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
                     TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(dto.getProductId())
             );
         }
 
+        // Validar cantidad positiva
+        if (dto.getQuantity() <= 0) {
+            throw new CustomException(
+                    "INVALID_QUANTITY",
+                    "La cantidad del producto debe ser mayor a cero."
+            );
+        }
+
+        // Mapear y guardar el ítem
         PurchaseItem entity = purchaseItemMapper.toEntity(dto);
         PurchaseItem saved = purchaseItemRepository.save(entity);
+
+        // Retornar DTO
         return purchaseItemMapper.toDto(saved);
     }
 
@@ -102,5 +118,39 @@ public class PurchaseItemServiceImpl implements PurchaseItemService {
             );
         }
         purchaseItemRepository.deleteById(id);
+    }
+
+    /**
+     * Reduce el stock de los productos después de registrar una compra.
+     * Si algún producto no tiene suficiente stock, lanza una excepción y revierte la transacción.
+     */
+    @Override
+    @Transactional
+    public void reduceStockAfterPurchase(List<PurchaseItemDto> purchasedItems) {
+        for (PurchaseItemDto item : purchasedItems) {
+            Long productId = item.getProductId();
+            int quantityPurchased = item.getQuantity();
+
+            // Buscar el producto
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new CustomException(
+                            TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                            "Producto con ID " + productId + " no encontrado."
+                    ));
+
+            // Validar stock suficiente
+            if (product.getStockQuantity() < quantityPurchased) {
+                throw new CustomException(
+                        "INSUFFICIENT_STOCK",
+                        "Stock insuficiente para el producto: " + product.getName()
+                );
+            }
+
+            // Reducir stock
+            product.setStockQuantity(product.getStockQuantity() - quantityPurchased);
+
+            // Guardar cambios
+            productRepository.save(product);
+        }
     }
 }

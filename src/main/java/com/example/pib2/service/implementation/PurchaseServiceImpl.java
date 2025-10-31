@@ -2,15 +2,18 @@ package com.example.pib2.service.implementation;
 
 import com.example.pib2.exception.CustomException;
 import com.example.pib2.helpers.TechnicalErrorMessage;
-import com.example.pib2.model.purchase.dto.PurchaseDto;
-import com.example.pib2.model.purchaseItem.PurchaseItem;
-import com.example.pib2.model.purchaseItem.mappers.PurchaseItemMapper;
-import com.example.pib2.model.purchase.mappers.PurchaseMapper;
+import com.example.pib2.model.product.Product;
 import com.example.pib2.model.purchase.Purchase;
-import com.example.pib2.repository.PurchaseRepository;
+import com.example.pib2.model.purchase.dto.PurchaseDto;
+import com.example.pib2.model.purchase.mappers.PurchaseMapper;
+import com.example.pib2.model.purchaseItem.PurchaseItem;
+import com.example.pib2.model.purchaseItem.dto.PurchaseItemDto;
+import com.example.pib2.model.purchaseItem.mappers.PurchaseItemMapper;
 import com.example.pib2.repository.ProductRepository;
 import com.example.pib2.repository.PurchaseItemRepository;
+import com.example.pib2.repository.PurchaseRepository;
 import com.example.pib2.service.PurchaseService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,32 +31,56 @@ public class PurchaseServiceImpl implements PurchaseService {
     private final PurchaseMapper purchaseMapper;
     private final PurchaseItemMapper purchaseItemMapper;
 
+    /**
+     * Crea una nueva compra con sus ítems y reduce el stock de los productos comprados.
+     */
     @Override
+    @Transactional
     public PurchaseDto create(PurchaseDto dto) {
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new CustomException(
+                    TechnicalErrorMessage.ORDER_EMPTY.getCode(),
+                    "La compra no puede estar vacía. Debe contener al menos un producto."
+            );
+        }
+
         Purchase purchase = purchaseMapper.toEntity(dto);
         purchase.setPurchaseDate(LocalDateTime.now());
+        purchase.setCity(dto.getCity());
 
-        // Guardamos primero la compra
-        Purchase savedPurchase = purchaseRepository.save(purchase);
-
-        // Guardamos los ítems
         List<PurchaseItem> items = dto.getItems().stream().map(itemDto -> {
-            if (!productRepository.existsById(itemDto.getProductId())) {
+            Product product = productRepository.findById(itemDto.getProductId())
+                    .orElseThrow(() -> new CustomException(
+                            TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
+                            TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(itemDto.getProductId())
+                    ));
+
+            if (product.getStockQuantity() < itemDto.getQuantity()) {
                 throw new CustomException(
-                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getCode(),
-                        TechnicalErrorMessage.PRODUCT_NOT_FOUND.getMessage(itemDto.getProductId())
+                        "INSUFFICIENT_STOCK",
+                        "Stock insuficiente para el producto: " + product.getName()
                 );
             }
+
+            // Reducir stock
+            product.setStockQuantity(product.getStockQuantity() - itemDto.getQuantity());
+            productRepository.save(product);
+
+            // Asociar ítem con la compra
             PurchaseItem item = purchaseItemMapper.toEntity(itemDto);
-            item.setPurchase(savedPurchase);
+            item.setPurchase(purchase); // 👈 Asocia la compra
             return item;
         }).collect(Collectors.toList());
 
-        purchaseItemRepository.saveAll(items);
-        savedPurchase.setItems(items);
+        // 👇 Agregar los ítems antes de guardar la compra
+        purchase.setItems(items);
+
+        // 👇 Guardar la compra (gracias al cascade = ALL, también guarda los ítems)
+        Purchase savedPurchase = purchaseRepository.save(purchase);
 
         return purchaseMapper.toDto(savedPurchase);
     }
+
 
     @Override
     public List<PurchaseDto> getAll() {

@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -23,26 +25,34 @@ public class PurchaseController {
 
     private final PurchaseService purchaseService;
 
+    // ---------------------- CREAR COMPRA (Protegido por autenticación básica) ----------------------
     @Operation(
-            summary = "Crear una nueva compra",
-            description = "Crea una compra con sus ítems asociados a partir de un objeto PurchaseDto."
+            summary = "Crear una nueva compra (protegido)",
+            description = "Crea una compra con sus ítems asociados. Solo accesible con credenciales de administrador: username=admin | password=admin123."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Compra creada exitosamente",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = PurchaseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos de la compra inválidos", content = @Content)
+            @ApiResponse(responseCode = "400", description = "Datos de la compra inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "No autorizado", content = @Content)
     })
     @PostMapping
-    public ResponseEntity<PurchaseDto> create(
+    public ResponseEntity<?> create(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Objeto PurchaseDto con los datos de la compra e ítems",
                     required = true,
                     content = @Content(schema = @Schema(implementation = PurchaseDto.class)))
-            @RequestBody PurchaseDto dto) {
+            @RequestBody PurchaseDto dto,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        if (!isAdmin(authHeader)) {
+            return ResponseEntity.status(401).body("Acceso no autorizado. Credenciales requeridas.");
+        }
         return ResponseEntity.ok(purchaseService.create(dto));
     }
 
+    // ---------------------- OBTENER TODAS LAS COMPRAS ----------------------
     @Operation(
             summary = "Obtener todas las compras",
             description = "Devuelve una lista con todas las compras registradas en el sistema."
@@ -52,6 +62,7 @@ public class PurchaseController {
         return ResponseEntity.ok(purchaseService.getAll());
     }
 
+    // ---------------------- OBTENER COMPRAS POR USUARIO ----------------------
     @Operation(
             summary = "Obtener compras por usuario",
             description = "Devuelve todas las compras realizadas por un usuario específico."
@@ -62,6 +73,7 @@ public class PurchaseController {
         return ResponseEntity.ok(purchaseService.getByUserId(userId));
     }
 
+    // ---------------------- OBTENER COMPRA POR ID ----------------------
     @Operation(
             summary = "Obtener una compra por ID",
             description = "Devuelve los detalles de una compra específica según su ID."
@@ -72,18 +84,43 @@ public class PurchaseController {
         return ResponseEntity.ok(purchaseService.getById(id));
     }
 
+    // ---------------------- ELIMINAR COMPRA (Protegido por autenticación básica) ----------------------
     @Operation(
-            summary = "Eliminar una compra",
-            description = "Elimina una compra existente según su ID."
+            summary = "Eliminar una compra (protegido)",
+            description = "Elimina una compra existente según su ID. Solo accesible con credenciales de administrador: username=admin | password=admin123."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Compra eliminada exitosamente"),
+            @ApiResponse(responseCode = "401", description = "No autorizado", content = @Content),
             @ApiResponse(responseCode = "404", description = "Compra no encontrada", content = @Content)
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(
-            @Parameter(description = "ID de la compra a eliminar", example = "5") @PathVariable Long id) {
+    public ResponseEntity<?> delete(
+            @Parameter(description = "ID de la compra a eliminar", example = "5") @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        if (!isAdmin(authHeader)) {
+            return ResponseEntity.status(401).body("Acceso no autorizado. Credenciales requeridas.");
+        }
         purchaseService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ---------------------- MÉTODO PRIVADO PARA VALIDAR CREDENCIALES ----------------------
+    private boolean isAdmin(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Basic ")) {
+            return false;
+        }
+        try {
+            String base64Credentials = authHeader.substring("Basic ".length()).trim();
+            byte[] credDecoded = Base64.getDecoder().decode(base64Credentials);
+            String credentials = new String(credDecoded, StandardCharsets.UTF_8);
+            String[] values = credentials.split(":", 2);
+            String username = values[0];
+            String password = values[1];
+            return "admin".equals(username) && "admin123".equals(password);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
